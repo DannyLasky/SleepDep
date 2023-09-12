@@ -1,1 +1,0 @@
-function sse = fit1exp(guess, x,y);amp 	= guess(1); tau 	= guess(2); const	= guess(3);	fit  =  amp .* exp(-x./tau) + const;	sse = sum((fit(:) - y(:)).^2);			plot(x, y, 'ko', x, fit, 'r-')	drawnow		return
