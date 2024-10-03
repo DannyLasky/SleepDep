@@ -1,13 +1,12 @@
-% Changing to use single epoch bouts from a .txt input rather than 4 epoch bouts from TSV as previously
-% Last updated 7/2023 by Danny Lasky
+% Last updated 2/2024 by Danny Lasky
 
 %% CHANGE ME! ⌄⌄⌄
-ExcelRows = 2:11;
+ExcelRows = 58;
 useScores = 1;                  % Toggle 0 for off, 1 for on
 epochLength = 4;                % in seconds
 tableName = "Master Sheet Sleep Dep";
-inputDir = 'P:\Jones_Maganti_Shared\Sleep Dep\EDFs and TXTs';
-outputDir = 'P:\Jones_Maganti_Shared\Sleep Dep\Output 06-07-23';
+inputDir = "P:\P_Drive_copy\Jones_Maganti_Shared\Sleep Dep\EDFs and TXTs"';
+outputDir = "P:\P_Drive_copy\Jones_Maganti_Shared\Sleep Dep\Lasky 2024\Individual output";
 %% CHANGE ME! ^^^
 
 %% Initialize variabes
@@ -25,7 +24,7 @@ for fileCount = 1:length(fileArr)
     currentFile = fileArr(fileCount);
     fprintf('Currently running %s.\n', currentFile);
     cd(inputDir);
-
+    
 %% Read in EDF and sleep scores, select the RF signal, and expand the array
     [fullArr, fs, fileNameEDF, sleepScores, EDFInfo] = DD_Read(currentFile, useScores, epochLength);
 
@@ -40,13 +39,13 @@ for fileCount = 1:length(fileArr)
     [avgMagArr, avgFreqArr, signalMax, signalMin, signalStd] = DD_Bandpower(normSignal, epochPts, fs);
 
 %% Align epochs in 6:30:00am-6:30:00am window and with scored epoch periods
-    [avgMagArr, avgFreqArr, startEpochOffset, endEpochOffset, DSTCheck] = DD_Align ...
+    [avgMagArr, avgFreqArr, startEpochOffset, endEpochOffset, EDFTime, DSTCheck] = DD_Align ...
         (epochLength, epochCount, avgMagArr, avgFreqArr, EDFInfo);
 
 %% Work up the TSV and make sleep state specific matrices
     if useScores == 1
         [alignedScores, justScores, homeoScores, alignedStart, alignedEnd, scoredArtifact] = ...
-            DD_Scores(sleepScores, startEpochOffset, endEpochOffset, epochLength, DSTCheck);
+            DD_Scores(sleepScores, startEpochOffset, endEpochOffset, epochLength, EDFTime, DSTCheck);
     end
 
 %% Normalize the band powers, Remove artifact, divide into hourly segments, and create a master matrix and tables
@@ -57,7 +56,10 @@ for fileCount = 1:length(fileArr)
     suppTable = table(modelfit, sig, mu, signalMax, signalMin, signalStd, DSTCheck, alignedStart, alignedEnd, ...
         scoredArtifact, artDeltaSum, artGammaSum);
 
-    outputDirFull = fullfile(outputDir, 'SAMPLE');       % currentFile
+    fileSplit = strsplit(fileArr(fileCount), "\");
+    fileName = fileSplit(end);
+    
+    outputDirFull = fullfile(outputDir, fileName);
     mkdir(outputDirFull);
     cd(outputDirFull);
 
@@ -68,6 +70,7 @@ for fileCount = 1:length(fileArr)
     if useScores == 1
         writetable(alignedScores, 'Scores Detailed.csv')
         writematrix(justScores, 'Scores Simple.csv')
+        writematrix(homeoScores, 'Scores Homeostasis.csv')
     end
 
 %% Create hourly delta gamma graphs for all epochs or a sleep state
@@ -77,8 +80,4 @@ for fileCount = 1:length(fileArr)
     if useScores == 1
         [stateTable] = DD_StateTime(fileNameEDF,justScores,epochLength);
     end
-
-%% Create sleep homeostasis figures used in Jones's grant, script adapted from Sleep_homeostasis_integration_RQ
-    % [output] = DD_Homeo(finalMatrix, homeoScores, fileNameEDF, epochLength);
-    close all
 end
